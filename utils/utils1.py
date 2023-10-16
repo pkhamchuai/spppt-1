@@ -12,6 +12,8 @@ import torch.nn.functional as F
 from torchir.metrics import NCC
 from skimage.metrics import structural_similarity as SSIM
 
+from utils.utils0 import transform_to_displacement_field
+
 
 # TODO: put training and testing functions here
 
@@ -694,6 +696,24 @@ def blend_img(edge, image):
     # convert image to float
     # out = np.float32(out)
     return out
+
+
+def transform_points_DVF(points, affine_params, image_size):
+    # transform points using displacement field
+    # DVF.shape = (2, H, W)
+    # points.shape = (2, N)
+
+    displacement_field = torch.zeros(image_size, image_size)
+    DVF = transform_to_displacement_field(
+        displacement_field.view(1, 1, displacement_field.size(0), displacement_field.size(1)), 
+        torch.tensor(affine_params).view(1, 2, 3))
+
+    # loop through each point and apply the transformation
+    for i in range(points.shape[1]):
+        points[:, i] = points[:, i] - DVF[:, int(points[1, i]), int(points[0, i])]
+
+    return points
+
 
 def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, image1_transformed,
                        matches1, matches2, matches1_transformed, desc1, desc2, affine_params=None, heatmap1=None, heatmap2=None, plot=True):

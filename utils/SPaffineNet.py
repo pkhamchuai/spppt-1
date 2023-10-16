@@ -5,6 +5,7 @@ import numpy as np
 from utils.SuperPoint import SuperPointFrontend
 from utils.utils0 import *
 from utils.utils1 import *
+from utils.utils1 import transform_points_DVF
 
 image_size = 256
 
@@ -57,26 +58,6 @@ image_size = 256
 
 #         # return transformed_source_affine, affine_params
 
-def transform_points(points, affine_params):
-    affine_params = affine_params.double()
-    # Convert points to tensor
-    points = torch.tensor(points).double().to(affine_params.device)
-    # reshape points tensor to (2, N) shape
-    points = points.reshape(2, -1)
-
-    # Add row of ones to points tensor
-    ones = torch.ones(points.shape[1], device=points.device).unsqueeze(0)
-    points = torch.cat((points, ones), dim=0)
-
-    # Apply affine transformation
-    transformed_points = torch.mm(affine_params.squeeze(0), points)
-
-    # Remove last row of ones
-    # transformed_points = transformed_points[:2, :]
-    # print('transformed_points: ', transformed_points.shape)
-
-    return transformed_points
-
 # define model
 class SP_AffineNet(nn.Module):
     def __init__(self, model_params):
@@ -128,7 +109,8 @@ class SP_AffineNet(nn.Module):
         try:
             matches1_2 = points1_2[:2, matches[0, :].astype(int)]
         except:
-            matches1_2 = transform_points(matches1.T[None, :, :], affine_params.cpu().detach())
+            matches1_2 = transform_points_DVF(matches1.T[None, :, :], 
+                                              affine_params.cpu().detach(), image_size)
 
         # transform the points using the affine parameters
         # matches1_transformed = transform_points(matches1.T[None, :, :], affine_params.cpu().detach())
