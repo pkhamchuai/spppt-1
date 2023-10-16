@@ -99,18 +99,23 @@ class SP_AffineNet(nn.Module):
             try:
                 while matches.shape[1] < 3 and self.nn_thresh > 0.1:
                     self.nn_thresh = self.nn_thresh - 0.1
-                    matches = tracker.nn_match_two_way(desc1_2, desc2, nn_thresh=self.nn_thresh)
+                    matches = tracker.nn_match_two_way(desc1, desc2, nn_thresh=self.nn_thresh)
             except:
                 return transformed_source_affine, affine_params, [], [], [], [], [], [], []
 
         # take the elements from points1 and points2 using the matches as indices
-        matches1 = points1[:2, matches[0, :].astype(int)]
-        matches2 = points2[:2, matches[1, :].astype(int)]
-        try:
-            matches1_2 = points1_2[:2, matches[0, :].astype(int)]
-        except:
-            matches1_2 = transform_points_DVF(matches1.T[None, :, :], 
-                                              affine_params.cpu().detach(), image_size)
+        matches1 = np.array(points1[:2, matches[0, :].astype(int)])
+        matches2 = np.array(points2[:2, matches[1, :].astype(int)])
+        # matches1_2 = np.array(points1_2[:2, matches[0, :].astype(int)])
+        # print('matches1', matches1)
+        # print('matches2', matches2)
+        # print('matches1_2', matches1_2)
+
+        # try:
+        #     matches1_2 = points1_2[:2, matches[0, :].astype(int)]
+        # except:
+        matches1_2 = transform_points_DVF(torch.tensor(matches1), 
+                        affine_params.cpu().detach(), image_size)
 
         # transform the points using the affine parameters
         # matches1_transformed = transform_points(matches1.T[None, :, :], affine_params.cpu().detach())

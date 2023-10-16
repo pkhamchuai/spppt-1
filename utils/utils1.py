@@ -710,7 +710,7 @@ def transform_points_DVF(points, affine_params, image_size):
 
     # loop through each point and apply the transformation
     for i in range(points.shape[1]):
-        points[:, i] = points[:, i] - DVF[:, int(points[1, i]), int(points[0, i])]
+        points[:, i] = points[:, i] - DVF[:, int(points[0, i]), int(points[1, i])]
 
     return points
 
@@ -750,27 +750,28 @@ def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, ima
             # Create a subplot with 2 rows and 2 columns
             fig, axes = plt.subplot_mosaic("AADE;BCFG", figsize=(20, 10))
 
-            overlaid1 = overlay_points(image1.copy(), matches1, radius=2)
-            overlaid2 = overlay_points(image2.copy(), matches2, radius=2)
+            overlaid1 = overlay_points(image1.copy(), matches1, radius=1)
+            overlaid2 = overlay_points(image2.copy(), matches2, radius=1)
             overlaid1to2 = overlay_points(overlaid1.copy(), matches1_transformed, color=(155, 0, 0), radius=1)
+            # overlaid1to2 = overlay_points(overlaid1to2.copy(), matches1, color=(0, 0, 155), radius=1)
             # true points in black, transformed points in white
-            overlaid12_error = overlay_points(overlaid2, matches1_transformed, color=(155, 0, 0), radius=1)
+            overlaid12_error = overlay_points(overlaid2.copy(), matches1_transformed, color=(0, 0, 155), radius=1)
 
             # Row 1: Two images side-by-side with overlaid points and lines
-
-            axes["F"].imshow(image1_transformed, cmap='gray')
-            axes["F"].set_title(f"Source transformed, MSE: {mse12_image:.4f}, SSIM: {ssim12_image:.4f}")
+            output_overlaid = overlay_points(image1_transformed.copy(), matches1_transformed, radius=1)
+            axes["F"].imshow(output_overlaid, cmap='gray')
+            axes["F"].set_title(f"Output, MSE: {mse12_image:.4f}, SSIM: {ssim12_image:.4f}")
             axes["F"].axis('off')
             axes['F'].grid(True)
 
             # axe B shows source image
-            axes["B"].imshow(image1, cmap='gray')
+            axes["B"].imshow(overlaid1, cmap='gray')
             axes["B"].set_title(f"Source, MSE: {mse12_image_before:.4f} SSIM: {ssim12_image_before:.4f}")
             axes["B"].axis('off')
             axes['B'].grid(True)
 
             # axe C shows target image
-            axes["C"].imshow(image2, cmap='gray')
+            axes["C"].imshow(overlaid2, cmap='gray')
             axes["C"].set_title(f"Target")
             axes["C"].axis('off')
             axes['C'].grid(True)
@@ -782,13 +783,13 @@ def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, ima
             imgD = draw_lines_one_image(overlaid1to2, matches1_transformed, matches1, line_color=(0, 0, 155))
             # img2 = draw_lines_one_image(img2, matches2, matches1_transformed, line_color=(255, 0, 0))
             axes["D"].imshow(imgD)
-            axes["D"].set_title(f"Trg, pt src, transformation lines.")
+            axes["D"].set_title(f"SrcImg, Transformation lines.")
             axes["D"].axis('off')
 
             # img2 = draw_lines_one_image(overlaid2, matches1_transformed, matches1, line_color=(0, 0, 155))
-            imgE = draw_lines_one_image(overlaid12_error, matches2, matches1_transformed, line_color=(255, 0, 0))
+            imgE = draw_lines_one_image(overlaid12_error, matches2, matches1_transformed, line_color=(155, 0, 0))
             axes["E"].imshow(imgE)
-            axes["E"].set_title(f"Error lines. MSE: {mse12:.4f}, TRE: {tre12:.4f}")
+            axes["E"].set_title(f"TrgImg, Error lines. MSE: {mse12:.4f}, TRE: {tre12:.4f}")
             axes["E"].axis('off')
 
             # Display the checkerboard image 1 transformed to 2
