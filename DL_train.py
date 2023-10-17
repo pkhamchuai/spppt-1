@@ -56,13 +56,13 @@ def train(model, model_params, timestamp):
     for epoch in range(model_params.start_epoch, model_params.num_epochs):
         # Set model to training mode
         model.train()
-
-        # Zero the parameter gradients
-        optimizer.zero_grad()
         
         running_loss = 0.0
         train_bar = tqdm(train_dataset, desc=f'Training Epoch {epoch+1}/{model_params.num_epochs}')
         for i, data in enumerate(train_bar):
+            # Zero the parameter gradients
+            optimizer.zero_grad()
+
             # Get images and affine parameters
             if model_params.sup:
                 source_image, target_image, affine_params_true = data
@@ -111,9 +111,9 @@ def train(model, model_params, timestamp):
                 # loss_points = criterion_points(points1_affine, points2)
 
                 loss += loss_affine
-            loss.backward()
+            # loss.backward()
             optimizer.step()
-            scheduler.step()
+            
 
             # Plot images if i < 5
             if i % 100 == 0:
@@ -128,7 +128,9 @@ def train(model, model_params, timestamp):
             running_loss_list.append([epoch+((i+1)/len(train_dataset)), loss.item()])
             train_bar.set_postfix({'loss': running_loss / (i+1)})
         print(f'Training Epoch {epoch+1}/{model_params.num_epochs} loss: {running_loss / len(train_dataset)}')
-
+        
+        scheduler.step()
+        
         # Validate model
         validation_loss = 0.0
         model.eval()
