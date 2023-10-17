@@ -27,7 +27,7 @@ class MSE_SSIM:
         img1_numpy = img1.detach().cpu().numpy()
         img2_numpy = img2.detach().cpu().numpy()
         return self.mse(img1, img2) + \
-            SSIM(img1_numpy, img2_numpy, data_range=img2_numpy.max() - img2_numpy.min())
+            (1/SSIM(img1_numpy, img2_numpy, data_range=img2_numpy.max() - img2_numpy.min()))
 
 
 class MSE_NCC:
@@ -47,7 +47,7 @@ class MSE_SSIM_NCC:
     def __call__(self, img1, img2):
         img1_numpy = img1.detach().cpu().numpy()
         img2_numpy = img2.detach().cpu().numpy()
-        return self.mse(img1, img2) + SSIM(img1_numpy, img2_numpy, data_range=img2_numpy.max() - img2_numpy.min()) + self.ncc(img1, img2)
+        return self.mse(img1, img2) + (1/SSIM(img1_numpy, img2_numpy, data_range=img2_numpy.max() - img2_numpy.min())) + self.ncc(img1, img2)
     
 
 class loss_extra:

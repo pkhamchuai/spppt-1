@@ -112,7 +112,8 @@ def train(model, model_params, timestamp):
                 loss += loss_affine
             loss.backward()
             optimizer.step()
-            
+            scheduler.step()
+
             # Plot images if i < 5
             if i < 5:
                 DL_affine_plot(f"epoch{epoch+1}_train", output_dir,
@@ -126,9 +127,6 @@ def train(model, model_params, timestamp):
             running_loss_list.append([epoch+((i+1)/len(train_dataset)), loss.item()])
             train_bar.set_postfix({'loss': running_loss / (i+1)})
         print(f'Training Epoch {epoch+1}/{model_params.num_epochs} loss: {running_loss / len(train_dataset)}')
-
-        optimizer.step()
-        scheduler.step()
 
         # Validate model
         validation_loss = 0.0
