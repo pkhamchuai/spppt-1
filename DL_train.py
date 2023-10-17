@@ -34,7 +34,7 @@ image_size = 256
 def train(model, model_params, timestamp):
     # Define loss function based on supervised or unsupervised learning
     criterion = model_params.loss_image
-    # extra = loss_extra()
+    extra = loss_extra()
 
     if model_params.sup:
         criterion_affine = nn.MSELoss()
@@ -104,7 +104,7 @@ def train(model, model_params, timestamp):
             heatmap2 = outputs[8]
 
             loss = criterion(transformed_source_affine, target_image)
-            # loss += extra(affine_params_predicted)
+            loss += extra(affine_params_predicted)
             if model_params.sup:
                 loss_affine = criterion_affine(affine_params_true.view(1, 2, 3), affine_params_predicted.cpu())
                 # TODO: add loss for points1_affine and points2, Euclidean distance
