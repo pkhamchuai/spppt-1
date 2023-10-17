@@ -702,26 +702,31 @@ def blend_img(edge, image):
     # out = np.float32(out)
     return out
 
-
-def transform_points_DVF(points, affine_params, image_size):
-    # transform points using displacement field
-    # DVF.shape = (2, H, W)
-    # points.shape = (2, N)
-
-    displacement_field = torch.zeros(image_size, image_size)
-    DVF = transform_to_displacement_field(
-        displacement_field.view(1, 1, displacement_field.size(0), displacement_field.size(1)), 
-        torch.tensor(affine_params).view(1, 2, 3))
-
-    # loop through each point and apply the transformation
+def transform_points_DVF(points, affine_params, tensor):
+    DVF = F.affine_grid(affine_params, tensor.size(), align_corners=False)
     for i in range(points.shape[1]):
         points[:, i] = points[:, i] - DVF[:, int(points[0, i]), int(points[1, i])]
-
     return points
+
+# def transform_points_DVF(points, affine_params, image_size):
+#     # transform points using displacement field
+#     # DVF.shape = (2, H, W)
+#     # points.shape = (2, N)
+
+#     displacement_field = torch.zeros(image_size, image_size)
+#     DVF = transform_to_displacement_field(
+#         displacement_field.view(1, 1, displacement_field.size(0), displacement_field.size(1)), 
+#         torch.tensor(affine_params).view(1, 2, 3))
+
+#     # loop through each point and apply the transformation
+#     for i in range(points.shape[1]):
+#         points[:, i] = points[:, i] - DVF[:, int(points[0, i]), int(points[1, i])]
+
+#     return points
 
 
 def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, image1_transformed,
-                       matches1, matches2, matches1_transformed, desc1, desc2, affine_params=None, heatmap1=None, heatmap2=None, plot=True):
+                       matches1, matches2, matches1_transformed, desc1, desc2, affine_params_true=None, affine_params_predict=None, heatmap1=None, heatmap2=None, plot=True):
     
 
     # BEGIN: 4j8d9fj3j9fj
@@ -765,7 +770,7 @@ def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, ima
             # Row 1: Two images side-by-side with overlaid points and lines
             output_overlaid = overlay_points(image1_transformed.copy(), matches1_transformed, radius=1)
             axes["F"].imshow(output_overlaid, cmap='gray')
-            axes["F"].set_title(f"Output, MSE: {mse12_image:.4f}, SSIM: {ssim12_image:.4f}")
+            axes["F"].set_title(f"Output, {affine_params_predict[0]}")
             axes["F"].axis('off')
             axes['F'].grid(True)
 
@@ -777,7 +782,10 @@ def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, ima
 
             # axe C shows target image
             axes["C"].imshow(overlaid2, cmap='gray')
-            axes["C"].set_title(f"Target")
+            if affine_params_true is not None:
+                axes["C"].set_title(f"Target, {affine_params_true[0]}")
+            else:
+                axes["C"].set_title(f"Target (unsupervised)")
             axes["C"].axis('off')
             axes['C'].grid(True)
 
@@ -806,7 +814,7 @@ def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, ima
             # Display the checkerboard image 1 transformed to 2
             checkerboard = create_checkerboard(image1_transformed, image2)
             axes["G"].imshow(checkerboard, cmap='gray')
-            axes["G"].set_title(f"Checker src to trg")
+            axes["G"].set_title(f"Checker, MSE: {mse12_image:.4f}, SSIM: {ssim12_image:.4f}")
             axes["G"].axis('off')
 
             # show also MSE and SSIM between the two images

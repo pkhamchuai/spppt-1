@@ -68,6 +68,7 @@ def train(model, model_params, timestamp):
                 source_image, target_image, affine_params_true = data
             else:
                 source_image, target_image = data
+                affine_params_true = None
             source_image = source_image.to(device)
             target_image = target_image.to(device)
 
@@ -115,12 +116,12 @@ def train(model, model_params, timestamp):
             scheduler.step()
 
             # Plot images if i < 5
-            if i < 5:
+            if i % 100 == 0:
                 DL_affine_plot(f"epoch{epoch+1}_train", output_dir,
                     f"{i}", "_", source_image[0, 0, :, :].detach().cpu().numpy(), target_image[0, 0, :, :].detach().cpu().numpy(), 
                     transformed_source_affine[0, 0, :, :].detach().cpu().numpy(),
-                    points1, points2, points1_transformed, desc1_2, desc2, \
-                        affine_params=affine_params_predicted, heatmap1=heatmap1, heatmap2=heatmap2, plot=True)
+                    points1, points2, points1_transformed, desc1_2, desc2, affine_params_true=affine_params_true,
+                        affine_params_predict=affine_params_predicted, heatmap1=heatmap1, heatmap2=heatmap2, plot=True)
 
             # Print statistics
             running_loss += loss.item()
@@ -138,6 +139,7 @@ def train(model, model_params, timestamp):
                     source_image, target_image, affine_params_true = data
                 else:
                     source_image, target_image = data
+                    affine_params_true = None
                 source_image = source_image.to(device)
                 target_image = target_image.to(device)
 
@@ -173,11 +175,11 @@ def train(model, model_params, timestamp):
                 validation_loss += loss.item()
 
                 # Plot images if i < 5
-                if i < 5:
+                if i % 50 == 0:
                     DL_affine_plot(f"epoch{epoch+1}_valid", output_dir,
                         f"{i}", "_", source_image[0, 0, :, :].cpu().numpy(), target_image[0, 0, :, :].cpu().numpy(), transformed_source_affine[0, 0, :, :].cpu().numpy(),
-                        points1, points2, points1_transformed, desc1_2, desc2, \
-                            affine_params=affine_params_predicted, heatmap1=heatmap1, heatmap2=heatmap2, plot=True)
+                        points1, points2, points1_transformed, desc1_2, desc2, affine_params_true=affine_params_true,
+                            affine_params_predict=affine_params_predicted, heatmap1=heatmap1, heatmap2=heatmap2, plot=True)
 
         # Print validation statistics
         validation_loss /= len(test_dataset)
@@ -276,8 +278,8 @@ def test(model, model_params, timestamp):
             results = DL_affine_plot(f"{i+1}", output_dir,
                 f"{i}", "_", source_image[0, 0, :, :].cpu().numpy(), target_image[0, 0, :, :].cpu().numpy(), \
                 transformed_source_affine[0, 0, :, :].cpu().numpy(), \
-                points1, points2, points1_transformed, desc1_2, desc2, \
-                    affine_params=affine_params_predicted, heatmap1=heatmap1, heatmap2=heatmap2, plot=plot_)
+                points1, points2, points1_transformed, desc1_2, desc2, affine_params_true=affine_params_true,
+                affine_params_predict=affine_params_predicted, heatmap1=heatmap1, heatmap2=heatmap2, plot=plot_)
 
 
             # calculate metrics
