@@ -242,9 +242,14 @@ class ModelParams:
         
 # Function to overlay points on the image
 def overlay_points(image, points, color=(0, 255, 0), radius=5):
-    image = ((image - image.min()) / (image.max() - image.min()) * 255).astype(np.uint8)
-    try:
+    # check and convert image to 3-channel, if grayscale, 
+    if len(image.shape) == 2:
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    # if image is normalized, convert it to 0-255
+    if image.max() <= 2:
+        image = ((image - image.min()) / (image.max() - image.min()) * 255).astype(np.uint8)
+    
+    try:
         for point in points.T:
             x, y = int(point[0]), int(point[1])
             cv2.circle(image, (x, y), radius, color, -1)
@@ -780,15 +785,21 @@ def DL_affine_plot(name, dir_name, image1_name, image2_name, image1, image2, ima
             # Blue: from original locations from image 2/1 to the affine-transformed locations
             # Red: from affine-transformed locations of points from image 2/1 to 
             # the locations they supposed to be in image 1/2
-            imgD = draw_lines_one_image(overlaid1to2, matches1_transformed, matches1, line_color=(0, 0, 155))
+            try:
+                imgD = draw_lines_one_image(overlaid1to2, matches1_transformed, matches1, line_color=(0, 0, 155))
+                axes["D"].imshow(imgD)
+            except:
+                axes["D"].imshow(overlaid1to2)
             # img2 = draw_lines_one_image(img2, matches2, matches1_transformed, line_color=(255, 0, 0))
-            axes["D"].imshow(imgD)
             axes["D"].set_title(f"SrcImg, Transformation lines.")
             axes["D"].axis('off')
 
             # img2 = draw_lines_one_image(overlaid2, matches1_transformed, matches1, line_color=(0, 0, 155))
-            imgE = draw_lines_one_image(overlaid12_error, matches2, matches1_transformed, line_color=(155, 0, 0))
-            axes["E"].imshow(imgE)
+            try:
+                imgE = draw_lines_one_image(overlaid12_error, matches2, matches1_transformed, line_color=(155, 0, 0))
+                axes["E"].imshow(imgE)
+            except:
+                axes["E"].imshow(overlaid12_error)
             axes["E"].set_title(f"TrgImg, Error lines. MSE: {mse12:.4f}, TRE: {tre12:.4f}")
             axes["E"].axis('off')
 

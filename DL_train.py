@@ -45,6 +45,7 @@ def train(model, model_params, timestamp):
 
     # Create empty list to store epoch number, train loss and validation loss
     epoch_loss_list = []
+    running_loss_list = []
     
     # Create output directory
     output_dir = f"output/{model_params.get_model_code()}_{timestamp}"
@@ -122,6 +123,7 @@ def train(model, model_params, timestamp):
 
             # Print statistics
             running_loss += loss.item()
+            running_loss_list.append([epoch+((i+1)/len(train_dataset)), loss.item()])
             train_bar.set_postfix({'loss': running_loss / (i+1)})
         print(f'Training Epoch {epoch+1}/{model_params.num_epochs} loss: {running_loss / len(train_dataset)}')
 
@@ -190,8 +192,12 @@ def train(model, model_params, timestamp):
         epoch = [x[0] for x in epoch_loss_list]
         train_loss = [x[1] for x in epoch_loss_list]
         val_loss = [x[2] for x in epoch_loss_list]
+        step = [x[0] for x in running_loss_list]
+        running_train_loss = [x[1] for x in running_loss_list]
 
         # Plot train loss and validation loss against epoch number
+        plt.figure()
+        plt.plot(step, running_train_loss, label='Running Train Loss')
         plt.plot(epoch, train_loss, label='Train Loss')
         plt.plot(epoch, val_loss, label='Validation Loss')
         plt.title('Train and Validation Loss')
