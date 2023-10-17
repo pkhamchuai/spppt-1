@@ -197,9 +197,9 @@ def train(model, model_params, timestamp):
 
         # Plot train loss and validation loss against epoch number
         plt.figure()
-        plt.plot(step, running_train_loss, label='Running Train Loss')
-        plt.plot(epoch, train_loss, label='Train Loss')
-        plt.plot(epoch, val_loss, label='Validation Loss')
+        plt.plot(step, running_train_loss, label='Running Train Loss', alpha=0.5)
+        plt.plot(epoch, train_loss, label='Train Loss', linewidth=3)
+        plt.plot(epoch, val_loss, label='Validation Loss', linewidth=3)
         plt.title('Train and Validation Loss')
         plt.legend()
         plt.xlabel('Epoch')
