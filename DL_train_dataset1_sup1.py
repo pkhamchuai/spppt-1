@@ -18,7 +18,7 @@ from torch import nn, optim
 from utils.utils0 import *
 from utils.utils1 import *
 from utils.utils1 import ModelParams, DL_affine_plot
-from utils.SPaffineNet import SP_AffineNet3
+from utils.SPaffineNet3 import SP_AffineNet3
 from utils.datagen import datagen
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
