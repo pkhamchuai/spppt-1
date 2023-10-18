@@ -249,6 +249,7 @@ def test(model, model_params, timestamp):
                 source_image, target_image, affine_params_true = data
             else:
                 source_image, target_image = data
+                affine_params_true = None
             source_image = source_image.to(device)
             target_image = target_image.to(device)
 
