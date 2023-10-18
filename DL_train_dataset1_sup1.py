@@ -18,7 +18,7 @@ from torch import nn, optim
 from utils.utils0 import *
 from utils.utils1 import *
 from utils.utils1 import ModelParams, DL_affine_plot
-from utils.SPaffineNet import SP_AffineNet
+from utils.SPaffineNet import SP_AffineNet3
 from utils.datagen import datagen
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -333,7 +333,7 @@ if __name__ == '__main__':
     print('Train set: ', [x.shape for x in next(iter(train_dataset))])
     print('Test set: ', [x.shape for x in next(iter(test_dataset))])
 
-    model = SP_AffineNet(model_params).to(device)
+    model = SP_AffineNet3(model_params).to(device)
     print(model)
 
     parameters = model.parameters()
@@ -365,7 +365,7 @@ if __name__ == '__main__':
         print(loss_list[i])
 
     model_save_path = "trained_models/"
-    model_name_to_save = model_save_path + f"{model_params.get_model_code()}_{timestamp}.pth"
+    model_name_to_save = model_save_path + f"model3_{model_params.get_model_code()}_{timestamp}.pth"
     print(model_name_to_save)
     torch.save(model.state_dict(), model_name_to_save)
 
