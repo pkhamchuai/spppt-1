@@ -91,6 +91,7 @@ class AffineNet3(nn.Module):
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, 6)
 
+        self.dropout = nn.Dropout(p=0.7)
         self.aPooling = nn.AdaptiveAvgPool2d((1, 1))
         # self.ReLU = nn.PReLU()
         self.ReLU = nn.LeakyReLU()
@@ -119,9 +120,9 @@ class AffineNet3(nn.Module):
         # print(x.shape, y.shape)
         t = torch.cat((x, y), dim=1)
         # print(t.shape)
-        t = self.ReLU(self.fc1(t.flatten()))
+        t = self.ReLU(self.dropout(self.fc1(t.flatten())))
         # print(t.shape)
-        t = self.fc3(self.ReLU(self.fc2(t)))
+        t = self.fc3(self.ReLU(self.dropout(self.fc2(t))))
         t = t.view(-1, 2, 3)
         # print(t.shape)
 

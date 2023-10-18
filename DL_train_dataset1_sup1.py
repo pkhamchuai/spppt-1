@@ -113,7 +113,7 @@ def train(model, model_params, timestamp):
                 loss += loss_affine
             # loss.backward()
             optimizer.step()
-            
+            scheduler.step()
 
             # Plot images if i < 5
             if i % 100 == 0:
@@ -128,8 +128,6 @@ def train(model, model_params, timestamp):
             running_loss_list.append([epoch+((i+1)/len(train_dataset)), loss.item()])
             train_bar.set_postfix({'loss': running_loss / (i+1)})
         print(f'Training Epoch {epoch+1}/{model_params.num_epochs} loss: {running_loss / len(train_dataset)}')
-        
-        scheduler.step()
         
         # Validate model
         validation_loss = 0.0
@@ -199,15 +197,15 @@ def train(model, model_params, timestamp):
 
         # Plot train loss and validation loss against epoch number
         plt.figure()
-        plt.plot(step, running_train_loss, label='Running Train Loss', alpha=0.5)
+        plt.plot(step, running_train_loss, label='Running Train Loss', alpha=0.3)
         plt.plot(epoch, train_loss, label='Train Loss', linewidth=3)
         plt.plot(epoch, val_loss, label='Validation Loss', linewidth=3)
         plt.title('Train and Validation Loss')
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
+        plt.yscale('log')
         plt.tight_layout()
-
         plt.savefig(save_plot_name)
         # plt.show()
 

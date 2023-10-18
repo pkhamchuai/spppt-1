@@ -206,8 +206,8 @@ def train(model, model_params, timestamp):
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
+        plt.yscale('log')
         plt.tight_layout()
-
         plt.savefig(save_plot_name)
         # plt.show()
 

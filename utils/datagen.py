@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+# import MNIST dataset
+from torchvision.datasets import MNIST
 from torchvision import transforms
 import cv2
 import numpy as np
@@ -10,17 +12,19 @@ import numpy as np
 img_size = 256
 
 class MyDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, df, is_train, sup, transform=None):
+    def __init__(self, dataset_path, df, is_train, sup, im_size=img_size, transform=None):
         self.dataset_path = dataset_path
         self.df = df
         self.is_train = is_train
         self.sup = sup
-        if self.sup == True:
+        if transform is not None:
+            self.transform = transform
+        elif transform is None and self.sup == True:
             self.transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Lambda(lambda x: x + 0.01 * torch.randn_like(x))
             ])
-        else: # if unsupervised, apply random transformation too
+        elif transform is None and self.sup == False: # if unsupervised, apply random transformation too
             self.transform = transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Lambda(lambda x: x + 0.01 * torch.randn_like(x)),
@@ -90,8 +94,18 @@ def datagen(dataset, is_train, sup):
             df = pd.read_csv('Dataset/dataset_shape_synth_train.csv')
         else:  
             df = pd.read_csv('Dataset/dataset_shape_synth_test.csv')
+    elif dataset == 3:
+        # MNIST dataset
+        if is_train:
+            dataset_path = 'Dataset/MNIST'
+            dataset = MNIST(dataset_path, train=True, transform=transforms.ToTensor(), download=True)
+        else:
+            dataset_path = 'Dataset/MNIST'
+            dataset = MNIST(dataset_path, train=False, transform=transforms.ToTensor(), download=True)
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=is_train)
+        return dataloader
     else:
-        raise ValueError('Invalid dataset parameter')
+        raise ValueError('Input dataset parameter 0-3')
 
     dataset = MyDataset(dataset_path, df, is_train, sup)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=is_train)
