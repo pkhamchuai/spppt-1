@@ -45,7 +45,7 @@ class MyDataset(torch.utils.data.Dataset):
         source_img = self.transform(source_img)
         target_img = self.transform(target_img)
         if self.sup:
-            affine_params = np.array([row['M[0]'], row['M[1][0]'], row['M[1][1]'], row['M[2]'], row['M[3][0]'], row['M[3][1]']]).astype(np.float32)
+            affine_params = np.array([[row['M00'], row['M01'], row['M02']], [row['M10'], row['M11'], row['M12']]]).astype(np.float32)
             return source_img, target_img, affine_params 
         else:
             return source_img, target_img

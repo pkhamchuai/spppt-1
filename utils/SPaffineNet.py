@@ -65,6 +65,7 @@ class SP_AffineNet(nn.Module):
         # try:
         #     matches1_2 = points1_2[:2, matches[0, :].astype(int)]
         # except:
+        # print(affine_params.cpu().detach().shape, transformed_source_affine.shape)
         matches1_2 = transform_points_DVF(torch.tensor(matches1), 
                         affine_params.cpu().detach(), transformed_source_affine)
 
@@ -79,16 +80,22 @@ class AffineNet(nn.Module):
         self.conv1f = 64
         self.conv2f = 128
         self.conv3f = 256
+        self.conv4f = 512
+        self.conv5f = 512
         self.conv1 = nn.Conv2d(1, self.conv1f, 3, padding=1, padding_mode='zeros')
         self.conv2 = nn.Conv2d(self.conv1f, self.conv2f, 3, padding=1, padding_mode='zeros')
         self.conv3 = nn.Conv2d(self.conv2f, self.conv3f, 3, padding=1, padding_mode='zeros')
+        self.conv4 = nn.Conv2d(self.conv3f, self.conv4f, 3, padding=1, padding_mode='zeros')
+        self.conv5 = nn.Conv2d(self.conv4f, self.conv5f, 3, padding=1, padding_mode='zeros')
 
         self.conv1s = nn.Conv2d(self.conv1f, self.conv1f, 2, stride=2, padding_mode='zeros')
         self.conv2s = nn.Conv2d(self.conv2f, self.conv2f, 2, stride=2, padding_mode='zeros')
         self.conv3s = nn.Conv2d(self.conv3f, self.conv3f, 2, stride=2, padding_mode='zeros')
-        self.fc1 = nn.Linear(self.conv3f*2, 128)
+        self.conv4s = nn.Conv2d(self.conv4f, self.conv4f, 2, stride=2, padding_mode='zeros')
+        self.fc1 = nn.Linear(self.conv5f*2, 128)
         self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 6)
+        self.fc3 = nn.Linear(64, 32)
+        self.fc4 = nn.Linear(32, 6)
 
         self.aPooling = nn.AdaptiveAvgPool2d((1, 1))
         # self.ReLU = nn.PReLU()
@@ -96,6 +103,17 @@ class AffineNet(nn.Module):
         self.Act1 = nn.GroupNorm(int(self.conv1f/2), self.conv1f, eps=1e-05, affine=True)
         self.Act2 = nn.GroupNorm(int(self.conv2f/2), self.conv2f, eps=1e-05, affine=True)
         self.Act3 = nn.GroupNorm(int(self.conv3f/2), self.conv3f, eps=1e-05, affine=True)
+        self.Act4 = nn.GroupNorm(int(self.conv4f/2), self.conv4f, eps=1e-05, affine=True)
+        self.Act5 = nn.GroupNorm(int(self.conv5f/2), self.conv5f, eps=1e-05, affine=True)
+        '''self.Act1 = nn.BatchNorm2d(self.conv1f)
+        self.Act2 = nn.BatchNorm2d(self.conv2f)
+        self.Act3 = nn.BatchNorm2d(self.conv3f)
+        self.Act4 = nn.BatchNorm2d(self.conv4f)
+        self.Act5 = nn.BatchNorm2d(self.conv5f)'''
+        '''
+        self.pooling = nn.AvgPool2d(2, ceil_mode=False)
+        self.elu = nn.ELU()
+        self.GN = nn.GroupNorm(num_groups, num_channels, eps=1e-05, affine=True)'''
 
         # self.flow = torch.nn.Parameter(torch.zeros(1, 2, image_size, image_size).to(device), requires_grad=True)
         # self.img = torch.nn.Parameter(torch.zeros(1, 1, image_size, image_size).to(device), requires_grad=True)
@@ -113,90 +131,20 @@ class AffineNet(nn.Module):
         x = self.Act3(self.ReLU(self.conv3s(self.Act3(self.ReLU(self.conv3(x))))))
         y = self.Act3(self.ReLU(self.conv3s(self.Act3(self.ReLU(self.conv3(y))))))
         # print(x.shape, y.shape)
-        x = self.aPooling(x)
-        y = self.aPooling(y)
+        x = self.Act4(self.ReLU(self.conv4s(self.Act4(self.ReLU(self.conv4(x))))))
+        y = self.Act4(self.ReLU(self.conv4s(self.Act4(self.ReLU(self.conv4(y))))))
+        # print(x.shape, y.shape)
+        x = self.aPooling(self.Act5(self.ReLU(self.conv5(x))))
+        y = self.aPooling(self.Act5(self.ReLU(self.conv5(y))))
         # print(x.shape, y.shape)
         t = torch.cat((x, y), dim=1)
         # print(t.shape)
-        t = self.ReLU(self.fc1(t.flatten()))
+        t = self.fc1(t.flatten())
         # print(t.shape)
-        t = self.fc3(self.ReLU(self.fc2(t)))
-        t = t.view(-1, 2, 3)
+        t = self.fc4(self.fc3(self.fc2(t)))
+        t = t.view(1, 2, 3)
         # print(t.shape)
 
         return t
-
-# class AffineNet(nn.Module):
-#     def __init__(self):
-#         super(AffineNet, self).__init__()
-#         self.conv1f = 64
-#         self.conv2f = 128
-#         self.conv3f = 256
-#         self.conv4f = 512
-#         self.conv5f = 512
-#         self.conv1 = nn.Conv2d(1, self.conv1f, 3, padding=1, padding_mode='zeros')
-#         self.conv2 = nn.Conv2d(self.conv1f, self.conv2f, 3, padding=1, padding_mode='zeros')
-#         self.conv3 = nn.Conv2d(self.conv2f, self.conv3f, 3, padding=1, padding_mode='zeros')
-#         self.conv4 = nn.Conv2d(self.conv3f, self.conv4f, 3, padding=1, padding_mode='zeros')
-#         self.conv5 = nn.Conv2d(self.conv4f, self.conv5f, 3, padding=1, padding_mode='zeros')
-
-#         self.conv1s = nn.Conv2d(self.conv1f, self.conv1f, 2, stride=2, padding_mode='zeros')
-#         self.conv2s = nn.Conv2d(self.conv2f, self.conv2f, 2, stride=2, padding_mode='zeros')
-#         self.conv3s = nn.Conv2d(self.conv3f, self.conv3f, 2, stride=2, padding_mode='zeros')
-#         self.conv4s = nn.Conv2d(self.conv4f, self.conv4f, 2, stride=2, padding_mode='zeros')
-#         self.fc1 = nn.Linear(self.conv5f*2, 128)
-#         self.fc2 = nn.Linear(128, 64)
-#         self.fc3 = nn.Linear(64, 32)
-#         self.fc4 = nn.Linear(32, 6)
-
-#         self.aPooling = nn.AdaptiveAvgPool2d((1, 1))
-#         # self.ReLU = nn.PReLU()
-#         self.ReLU = nn.LeakyReLU()
-#         self.Act1 = nn.GroupNorm(int(self.conv1f/2), self.conv1f, eps=1e-05, affine=True)
-#         self.Act2 = nn.GroupNorm(int(self.conv2f/2), self.conv2f, eps=1e-05, affine=True)
-#         self.Act3 = nn.GroupNorm(int(self.conv3f/2), self.conv3f, eps=1e-05, affine=True)
-#         self.Act4 = nn.GroupNorm(int(self.conv4f/2), self.conv4f, eps=1e-05, affine=True)
-#         self.Act5 = nn.GroupNorm(int(self.conv5f/2), self.conv5f, eps=1e-05, affine=True)
-#         '''self.Act1 = nn.BatchNorm2d(self.conv1f)
-#         self.Act2 = nn.BatchNorm2d(self.conv2f)
-#         self.Act3 = nn.BatchNorm2d(self.conv3f)
-#         self.Act4 = nn.BatchNorm2d(self.conv4f)
-#         self.Act5 = nn.BatchNorm2d(self.conv5f)'''
-#         '''
-#         self.pooling = nn.AvgPool2d(2, ceil_mode=False)
-#         self.elu = nn.ELU()
-#         self.GN = nn.GroupNorm(num_groups, num_channels, eps=1e-05, affine=True)'''
-
-#         # self.flow = torch.nn.Parameter(torch.zeros(1, 2, image_size, image_size).to(device), requires_grad=True)
-#         # self.img = torch.nn.Parameter(torch.zeros(1, 1, image_size, image_size).to(device), requires_grad=True)
-
-#     def forward(self, source_image, target_image):
-
-#         # print(source_image.size(), target_image.size())
-#         # x = self.conv1(source_image)
-#         x = self.Act1(self.ReLU(self.conv1s(self.Act1(self.ReLU(self.conv1(source_image))))))
-#         y = self.Act1(self.ReLU(self.conv1s(self.Act1(self.ReLU(self.conv1(target_image))))))
-#         # print(x.shape, y.shape)
-#         x = self.Act2(self.ReLU(self.conv2s(self.Act2(self.ReLU(self.conv2(x))))))
-#         y = self.Act2(self.ReLU(self.conv2s(self.Act2(self.ReLU(self.conv2(y))))))
-#         # print(x.shape, y.shape)
-#         x = self.Act3(self.ReLU(self.conv3s(self.Act3(self.ReLU(self.conv3(x))))))
-#         y = self.Act3(self.ReLU(self.conv3s(self.Act3(self.ReLU(self.conv3(y))))))
-#         # print(x.shape, y.shape)
-#         x = self.Act4(self.ReLU(self.conv4s(self.Act4(self.ReLU(self.conv4(x))))))
-#         y = self.Act4(self.ReLU(self.conv4s(self.Act4(self.ReLU(self.conv4(y))))))
-#         # print(x.shape, y.shape)
-#         x = self.aPooling(self.Act5(self.ReLU(self.conv5(x))))
-#         y = self.aPooling(self.Act5(self.ReLU(self.conv5(y))))
-#         # print(x.shape, y.shape)
-#         t = torch.cat((x, y), dim=1)
-#         # print(t.shape)
-#         t = self.fc1(t.flatten())
-#         # print(t.shape)
-#         t = self.fc4(self.fc3(self.fc2(t)))
-#         t = t.view(-1, 2, 3)
-#         # print(t.shape)
-
-#         return t
 
     
