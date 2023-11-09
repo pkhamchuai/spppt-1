@@ -21,9 +21,6 @@ from torch import nn, optim
 # from torchsummary import summary
 # from pytorch_model_summary import summary
 
-torch.manual_seed(9793047918980052389)
-print('Seed:', torch.seed())
-
 from utils.utils0 import *
 from utils.utils1 import *
 from utils.utils1 import ModelParams, DL_affine_plot, print_summary
@@ -52,9 +49,11 @@ def train(model_name, model_params, timestamp):
         # TODO: add loss for points1_affine and points2, Euclidean distance
 
     if model_name == 'SP_AffineNet1':
+        torch.manual_seed(9793047918980052389)
         from utils.SPaffineNet1 import SP_AffineNet1
         model = SP_AffineNet1(model_params).to(device)
     elif model_name == 'SP_AffineNet1_alt':
+        torch.manual_seed(9793047918980052389)
         from utils.SPaffineNet1_alt import SP_AffineNet1_alt
         model = SP_AffineNet1_alt(model_params).to(device)
     elif model_name == 'SP_AffineNet2':
@@ -91,6 +90,8 @@ def train(model_name, model_params, timestamp):
     # Create empty list to store epoch number, train loss and validation loss
     epoch_loss_list = []
     running_loss_list = []
+    
+    print('Seed:', torch.seed())
     
     # Create output directory
     output_dir = f"output/{model_name}_{model_params.get_model_code()}_{timestamp}"

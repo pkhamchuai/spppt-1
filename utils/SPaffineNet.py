@@ -83,8 +83,8 @@ class AffineNet(nn.Module):
         super(AffineNet, self).__init__()
         self.conv1f = 64
         self.conv2f = 128
-        self.conv3f = 256
-        self.conv4f = 512
+        self.conv3f = 128
+        self.conv4f = 256
         self.conv5f = 512
         self.conv1 = nn.Conv2d(1, self.conv1f, 3, padding=1, padding_mode='zeros')
         self.conv2 = nn.Conv2d(self.conv1f, self.conv2f, 3, padding=1, padding_mode='zeros')
@@ -96,10 +96,7 @@ class AffineNet(nn.Module):
         self.conv2s = nn.Conv2d(self.conv2f, self.conv2f, 2, stride=2, padding_mode='zeros')
         self.conv3s = nn.Conv2d(self.conv3f, self.conv3f, 2, stride=2, padding_mode='zeros')
         self.conv4s = nn.Conv2d(self.conv4f, self.conv4f, 2, stride=2, padding_mode='zeros')
-        self.fc1 = nn.Linear(self.conv5f*2, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.fc4 = nn.Linear(32, 6)
+        self.fc1 = nn.Linear(self.conv5f*2, 6)
 
         self.dropout = nn.Dropout(p=0.7)
         self.aPooling = nn.AdaptiveAvgPool2d((1, 1))
@@ -144,9 +141,8 @@ class AffineNet(nn.Module):
         # print(x.shape, y.shape)
         t = torch.cat((x, y), dim=1)
         # print(t.shape)
-        t = self.ReLU(self.dropout(self.fc1(t.flatten())))
+        t = self.fc1(t.flatten())
         # print(t.shape)
-        t = self.fc4(self.ReLU(self.dropout(self.fc3(self.ReLU(self.dropout(self.fc2(t)))))))
         t = t.view(1, 2, 3)
         # print(t.shape)
 
