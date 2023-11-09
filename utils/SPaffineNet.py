@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+# import torch.nn.functional as F
 import numpy as np
 from utils.SuperPoint import SuperPointFrontend
 from utils.utils0 import *
 from utils.utils1 import *
 from utils.utils1 import transform_points_DVF
+from pytorch_model_summary import summary
 
 image_size = 256
 
@@ -19,6 +20,9 @@ class SP_AffineNet(nn.Module):
         self.nn_thresh = 0.7
         self.model_params = model_params
         print("\nRunning new version (not run SP on source image)")
+
+        inputs = torch.rand((1, 1, image_size, image_size)), torch.rand((1, 1, image_size, image_size))
+        summary(self.affineNet, *inputs, show_input=True, show_hierarchical=True, print_summary=True)
 
     def forward(self, source_image, target_image):
         # source_image = source_image.to(device)

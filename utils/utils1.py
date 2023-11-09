@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchir.metrics import NCC
 from skimage.metrics import structural_similarity as SSIM
+import sys
 
 from utils.utils0 import transform_to_displacement_field
 
@@ -75,8 +76,10 @@ class ModelParams:
                  learning_rate=0.001, decay_rate = 0.96, num_epochs=10, batch_size=1):
         # dataset: dataset used
         # dataset=0: actual eye
-        # dataset=1: synthetic eye
-        # dataset=2: synthetic shape
+        # dataset=1: synthetic eye easy
+        # dataset=2: synthetic eye medium
+        # dataset=3: synthetic eye hard
+        # dataset=4: synthetic shape
         # sup: supervised or unsupervised model
         # sup=0: unsupervised model
         # sup=1: supervised model
@@ -99,7 +102,10 @@ class ModelParams:
         # loss_affine=1: loss_affine
 
         self.dataset = dataset
-        self.sup = sup
+        if self.dataset == 0:
+            self.sup = 0
+        else:
+            self.sup = sup
         self.image = image
         self.heatmaps = heatmaps
 
@@ -218,7 +224,9 @@ class ModelParams:
         print('\nModel name: ', self.model_name)
         print('Model code: ', self.model_code)
         print('Dataset used: ', 'Actual eye' if self.dataset == 0 else \
-                'Synthetic eye' if self.dataset == 1 else \
+                'Synthetic eye easy' if self.dataset == 1 else \
+                'Synthetic eye medium' if self.dataset == 2 else \
+                'Synthetic eye hard' if self.dataset == 3 else \
                 'Synthetic shape')
         print('Supervised or unsupervised model: ', 'Supervised' if self.sup else 'Unsupervised')
         print('Image type: ', 'Image not used' if self.image == 0 else \
@@ -239,7 +247,42 @@ class ModelParams:
 
     def __repr__(self):
         return self.model_name
+    
+
+def print_summary(model_name, model_path, model_params, loss_list, timestamp, test=False):
+    print("Training output:")
+    if loss_list is not None:
+        for i in range(len(loss_list)):
+            print(loss_list[i])
+
+    # save the output of print_explanation() and loss_list to a txt file
+    if test:
+        output_dir = f"output/{model_name}_{model_params.get_model_code()}_{timestamp}_test"
+    else:
+        output_dir = f"output/{model_name}_{model_params.get_model_code()}_{timestamp}"
+    os.makedirs(output_dir, exist_ok=True)
+    save_txt_name = f"{output_dir}/test_output_{model_name}_{model_params.get_model_code()}_{timestamp}.txt"
+
+    with open(save_txt_name, 'w') as f:
+        f.write(model_name)
+        f.write('\n')
+        f.write(model_path)
+        f.write('\n')
+        f.write(model_params.get_model_code())
+        f.write('\n')
+
+    sys.stdout = open(save_txt_name, 'a')
+    model_params.print_explanation()
+    sys.stdout = sys.__stdout__
+
+    with open(save_txt_name, 'a') as f:
+        if loss_list is not None:
+            for i in range(len(loss_list)):
+                f.write(str(loss_list[i]) + '\n')
         
+    print(f"Output saved to {save_txt_name}")
+
+
 # Function to overlay points on the image
 def overlay_points(image, points, color=(0, 255, 0), radius=5):
     # check and convert image to 3-channel, if grayscale, 
@@ -709,7 +752,7 @@ def transform_points_DVF(points, M, image):
     displacement_field = torch.zeros(image.shape[-1], image.shape[-1])
     DVF = transform_to_displacement_field(
         displacement_field.view(1, 1, displacement_field.size(0), displacement_field.size(1)), 
-        torch.tensor(M).view(1, 2, 3))
+        M.clone().view(1, 2, 3))
     if isinstance(DVF, torch.Tensor):
         DVF = DVF.numpy()
     # loop through each point and apply the transformation

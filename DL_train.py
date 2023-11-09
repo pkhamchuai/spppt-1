@@ -1,3 +1,4 @@
+# import sys
 import argparse
 import numpy as np
 import os
@@ -13,12 +14,19 @@ from datetime import datetime
 from tqdm import tqdm
 
 import torch
+# from torchvision import transforms
 from torch import nn, optim
+# import torch.nn.functional as F
+# from torch.utils import data
+# from torchsummary import summary
+# from pytorch_model_summary import summary
+
+torch.manual_seed(9793047918980052389)
+print('Seed:', torch.seed())
 
 from utils.utils0 import *
 from utils.utils1 import *
-from utils.utils1 import ModelParams, DL_affine_plot
-from utils.SPaffineNet import SP_AffineNet
+from utils.utils1 import ModelParams, DL_affine_plot, print_summary
 from utils.datagen import datagen
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,8 +38,11 @@ if int(cv2.__version__[0]) < 3: # pragma: no cover
 
 image_size = 256
 
+# from utils.SuperPoint import SuperPointFrontend
+# from utils.utils1 import transform_points_DVF
+
 # Define training function
-def train(model, model_params, timestamp):
+def train(model_name, model_params, timestamp):
     # Define loss function based on supervised or unsupervised learning
     criterion = model_params.loss_image
     extra = loss_extra()
@@ -40,15 +51,49 @@ def train(model, model_params, timestamp):
         criterion_affine = nn.MSELoss()
         # TODO: add loss for points1_affine and points2, Euclidean distance
 
-    # Define optimizer
-    optimizer = optim.Adam(model.parameters(), lr=model_params.learning_rate)
+    if model_name == 'SP_AffineNet1':
+        from utils.SPaffineNet1 import SP_AffineNet1
+        model = SP_AffineNet1(model_params).to(device)
+    elif model_name == 'SP_AffineNet1_alt':
+        from utils.SPaffineNet1_alt import SP_AffineNet1_alt
+        model = SP_AffineNet1_alt(model_params).to(device)
+    elif model_name == 'SP_AffineNet2':
+        from utils.SPaffineNet2 import SP_AffineNet2
+        model = SP_AffineNet2(model_params).to(device)
+    elif model_name == 'SP_AffineNet2_alt':
+        from utils.SPaffineNet2_alt import SP_AffineNet2_alt
+        model = SP_AffineNet2_alt(model_params).to(device)
+    elif model_name == 'SP_AffineNet3':
+        from utils.SPaffineNet3 import SP_AffineNet3
+        model = SP_AffineNet3(model_params).to(device)
+
+    parameters = model.parameters()
+    optimizer = optim.Adam(parameters, model_params.learning_rate)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: model_params.decay_rate ** epoch)
+    model_path = args.model_path
+
+    # if a model is loaded, the training will continue from the epoch it was saved at
+    if model_path is not None:
+        model.load_state_dict(torch.load(model_path))
+        # print(model_path.split('/')[-1].split('_'))
+        model_params.start_epoch = int(model_path.split('/')[-1].split('_')[3])
+        print(f'Loaded model from {model_path}\nStarting at epoch {model_params.start_epoch}')
+        if model_params.start_epoch >= model_params.num_epochs:
+            model_params.num_epochs += model_params.start_epoch
+    else:
+        model_params.start_epoch = 0
+        print('No model loaded, starting from scratch')
+
+    # print case
+    # print(model_params)
+    model_params.print_explanation()
 
     # Create empty list to store epoch number, train loss and validation loss
     epoch_loss_list = []
     running_loss_list = []
     
     # Create output directory
-    output_dir = f"output/{model_params.get_model_code()}_{timestamp}"
+    output_dir = f"output/{model_name}_{model_params.get_model_code()}_{timestamp}"
     os.makedirs(output_dir, exist_ok=True)
     save_plot_name = f"{output_dir}/loss_{model_params.get_model_code()}_epoch{model_params.num_epochs}_{timestamp}.png"
 
@@ -111,12 +156,12 @@ def train(model, model_params, timestamp):
                 # loss_points = criterion_points(points1_affine, points2)
 
                 loss += loss_affine
-            # loss.backward()
+            loss.backward()
             optimizer.step()
-            
+            scheduler.step()
 
             # Plot images if i < 5
-            if i % 100 == 0:
+            if i % 50 == 0:
                 DL_affine_plot(f"epoch{epoch+1}_train", output_dir,
                     f"{i}", "_", source_image[0, 0, :, :].detach().cpu().numpy(), target_image[0, 0, :, :].detach().cpu().numpy(), 
                     transformed_source_affine[0, 0, :, :].detach().cpu().numpy(),
@@ -128,8 +173,6 @@ def train(model, model_params, timestamp):
             running_loss_list.append([epoch+((i+1)/len(train_dataset)), loss.item()])
             train_bar.set_postfix({'loss': running_loss / (i+1)})
         print(f'Training Epoch {epoch+1}/{model_params.num_epochs} loss: {running_loss / len(train_dataset)}')
-        
-        scheduler.step()
         
         # Validate model
         validation_loss = 0.0
@@ -199,47 +242,49 @@ def train(model, model_params, timestamp):
 
         # Plot train loss and validation loss against epoch number
         plt.figure()
-        plt.plot(step, running_train_loss, label='Running Train Loss', alpha=0.5)
+        plt.plot(step, running_train_loss, label='Running Train Loss', alpha=0.3)
         plt.plot(epoch, train_loss, label='Train Loss', linewidth=3)
         plt.plot(epoch, val_loss, label='Validation Loss', linewidth=3)
         plt.title('Train and Validation Loss')
         plt.legend()
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
-        plt.yscale('log')
+        # plt.yscale('log')
         plt.tight_layout()
         plt.savefig(save_plot_name)
         # plt.show()
 
-    print('Finished Training')
+    print('\nFinished Training')
 
     # delete all txt files in output_dir
     for file in os.listdir(output_dir):
         if file.endswith(".txt"):
             os.remove(os.path.join(output_dir, file))
 
+    # Save model
+    model_save_path = "trained_models/"
+    model_name_to_save = model_save_path + f"{model_name}_{model_params.get_model_code()}_{timestamp}.pth"
+    torch.save(model.state_dict(), model_name_to_save)
+    print(f'Model saved in: {model_name_to_save}')
+
     # Return epoch_loss_list
-    return epoch_loss_list
+    return model, epoch_loss_list
 
 
-def test(model, model_params, timestamp):
+def test(model_name, model, model_params, timestamp):
     # Set model to training mode
     model.eval()
 
     # Create output directory
-    output_dir = f"output/{model_params.get_model_code()}_{timestamp}_test"
+    output_dir = f"output/{model_name}_{model_params.get_model_code()}_{timestamp}_test"
     os.makedirs(output_dir, exist_ok=True)
 
     # Validate model
     # validation_loss = 0.0
 
+    metrics = []
     # create a csv file to store the metrics
     csv_file = f"{output_dir}/metrics.csv"
-    with open(csv_file, 'w', newline='') as file:
-        writer = csv.writer(file)
-        # matches1_transformed.shape[-1], mse_before, mse12, tre_before, tre12, \
-        # mse12_image, ssim12_image, 
-        writer.writerow(["index", "mse_before", "mse12", "tre_before", "tre12", "mse12_image_before", "mse12_image", "ssim12_image_before", "ssim12_image"])
 
     with torch.no_grad():
         testbar = tqdm(test_dataset, desc=f'Testing:')
@@ -273,7 +318,7 @@ def test(model, model_params, timestamp):
             heatmap1 = outputs[7]
             heatmap2 = outputs[8]
 
-            if i < 50:
+            if i < 10:
                 plot_ = True
             else:
                 plot_ = False
@@ -296,15 +341,25 @@ def test(model, model_params, timestamp):
             ssim12_image_before = results[7]
             ssim12_image = results[8]
 
-            # write metrics to csv file
-            with open(csv_file, 'a', newline='') as file:
-                writer = csv.writer(file) # TODO: might need to export true & predicted affine parameters too
-                writer.writerow([i, mse_before, mse12, tre_before, tre12, mse12_image_before, mse12_image, ssim12_image_before, ssim12_image])
+            # append metrics to metrics list
+            metrics.append([i, mse_before, mse12, tre_before, tre12, mse12_image_before, mse12_image, ssim12_image_before, ssim12_image])
+
+    with open(csv_file, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["index", "mse_before", "mse12", "tre_before", "tre12", "mse12_image_before", "mse12_image", "ssim12_image_before", "ssim12_image"])
+        for i in range(len(metrics)):
+            writer.writerow(metrics[i])
+        # write the average and std of the metrics
+        metrics = np.array(metrics)
+        writer.writerow(["average", np.mean(metrics[:, 1]), np.mean(metrics[:, 2]), np.mean(metrics[:, 3]), np.mean(metrics[:, 4]), np.mean(metrics[:, 5]), np.mean(metrics[:, 6]), np.mean(metrics[:, 7]), np.mean(metrics[:, 8])])
+        writer.writerow(["std", np.std(metrics[:, 1]), np.std(metrics[:, 2]), np.std(metrics[:, 3]), np.std(metrics[:, 4]), np.std(metrics[:, 5]), np.std(metrics[:, 6]), np.std(metrics[:, 7]), np.std(metrics[:, 8])])
+
+    print(f"The test results are saved in {csv_file}")
 
     # delete all txt files in output_dir
-    for file in os.listdir(output_dir):
-        if file.endswith(".txt"):
-            os.remove(os.path.join(output_dir, file))
+    # for file in os.listdir(output_dir):
+    #     if file.endswith(".txt"):
+    #         os.remove(os.path.join(output_dir, file))
 
 
 if __name__ == '__main__':
@@ -314,13 +369,13 @@ if __name__ == '__main__':
     parser.add_argument('--sup', type=int, default=1, help='supervised learning (1) or unsupervised learning (0)')
     parser.add_argument('--image', type=int, default=1, help='image used for training')
     parser.add_argument('--heatmaps', type=int, default=0, help='use heatmaps (1) or not (0)')
-    parser.add_argument('--loss_image', type=int, default=2, help='loss function for image registration')
-    parser.add_argument('--num_epochs', type=int, default=2, help='number of epochs')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='learning rate')
-    parser.add_argument('--decay_rate', type=float, default=0.9, help='decay rate')
+    parser.add_argument('--loss_image', type=int, default=0, help='loss function for image registration')
+    parser.add_argument('--num_epochs', type=int, default=10, help='number of epochs')
+    parser.add_argument('--learning_rate', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--decay_rate', type=float, default=0.96, help='decay rate')
+    parser.add_argument('--model', type=str, default=None, help='which model to use')
     parser.add_argument('--model_path', type=str, default=None, help='path to model to load')
     args = parser.parse_args()
-
 
     model_params = ModelParams(dataset=args.dataset, sup=args.sup, image=args.image, heatmaps=args.heatmaps, 
                                loss_image=args.loss_image, num_epochs=args.num_epochs, 
@@ -333,53 +388,15 @@ if __name__ == '__main__':
     print('Train set: ', [x.shape for x in next(iter(train_dataset))])
     print('Test set: ', [x.shape for x in next(iter(test_dataset))])
 
-    model = SP_AffineNet(model_params).to(device)
-    print(model)
-
-    parameters = model.parameters()
-    optimizer = optim.Adam(parameters, model_params.learning_rate)
-    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: model_params.decay_rate ** epoch)
-    model_path = args.model_path
-
-    # if a model is loaded, the training will continue from the epoch it was saved at
-    if model_path is not None:
-        model.load_state_dict(torch.load(model_path))
-        # print(model_path.split('/')[-1].split('_')[3])
-        model_params.start_epoch = int(model_path.split('/')[-1].split('_')[3])
-        print(f'Loaded model from {model_path}\nStarting at epoch {model_params.start_epoch}')
-        if model_params.start_epoch >= model_params.num_epochs:
-            model_params.num_epochs += model_params.start_epoch
-    else:
-        model_params.start_epoch = 0
-        print('No model loaded, starting from scratch')
-
-    # print case
-    print(model_params)
-    model_params.print_explanation()
-
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    loss_list = train(model, model_params, timestamp)
+    model, loss_list = train(args.model, model_params, timestamp)
 
-    print("Training output:")
-    for i in range(len(loss_list)):
-        print(loss_list[i])
+    # save the output of print_explanation() and loss_list to a txt file
+    print_summary(args.model, model_params, loss_list, timestamp, False)
 
-    model_save_path = "trained_models/"
-    model_name_to_save = model_save_path + f"{model_params.get_model_code()}_{timestamp}.pth"
-    print(model_name_to_save)
-    torch.save(model.state_dict(), model_name_to_save)
+    print("\nTesting the trained model +++++++++++++++++++++++")
 
-    print("Test model +++++++++++++++++++++++++++++")
-
-    # model = SPmodel = SP_AffineNet().to(device)
-    # print(model)
-
-    # parameters = model.parameters()
-    # optimizer = optim.Adam(parameters, model_params.learning_rate)
-    # scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: model_params.decay_rate ** epoch)
-
-    # model.load_state_dict(torch.load(model_name_to_save))
-
-    metrics = test(model, model_params, timestamp)
-    print(metrics)
+    test(args.model, model, model_params, timestamp)
+    print_summary(args.model, model_params, None, timestamp, True)
+    
     print("Test model finished +++++++++++++++++++++++++++++")

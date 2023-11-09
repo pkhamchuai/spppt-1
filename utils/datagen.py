@@ -27,8 +27,8 @@ class MyDataset(torch.utils.data.Dataset):
         elif transform is None and self.sup == False: # if unsupervised, apply random transformation too
             self.transform = transforms.Compose([
                 transforms.ToTensor(),
-                transforms.Lambda(lambda x: x + 0.01 * torch.randn_like(x)),
-                transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=5)
+                # transforms.Lambda(lambda x: x + 0.01 * torch.randn_like(x)),
+                # transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=5)
             ])
 
     def __len__(self):
@@ -80,32 +80,51 @@ def datagen(dataset, is_train, sup):
     elif dataset == 1:
         if is_train:
             # synthetic eye dataset
-            dataset_path = 'Dataset/synthetic_eye_dataset_train'
-            df = pd.read_csv('Dataset/dataset_eye_synth_train.csv')
+            dataset_path = 'Dataset/synth_eye_easy_train'
+            df = pd.read_csv('Dataset/synth_eye_easy_train.csv')
         else:
             # synthetic eye dataset
-            dataset_path = 'Dataset/synthetic_eye_dataset_test'
-            df = pd.read_csv('Dataset/dataset_eye_synth_test.csv')
+            dataset_path = 'Dataset/synthetic_eye_easy_test'
+            df = pd.read_csv('Dataset/synth_eye_easy_test.csv')
             
     elif dataset == 2:
+        if is_train:
+            # synthetic eye dataset medium
+            dataset_path = 'Dataset/synthetic_eye_medium_train'
+            df = pd.read_csv('Dataset/synth_eye_medium_train.csv')
+        else:
+            # synthetic eye dataset medium
+            dataset_path = 'Dataset/synthetic_eye_medium_test'
+            df = pd.read_csv('Dataset/synth_eye_medium_test.csv')
+    elif dataset == 3:
+        if is_train:
+            # synthetic eye dataset hard
+            dataset_path = 'Dataset/synthetic_eye_hard_train'
+            df = pd.read_csv('Dataset/synth_eye_hard_train.csv')
+        else:
+            # synthetic eye dataset hard
+            dataset_path = 'Dataset/synthetic_eye_hard_test'
+            df = pd.read_csv('Dataset/synth_eye_hard_test.csv')
+    elif dataset == 4:
         # synthetic shape dataset
         dataset_path = 'Dataset/synthetic_shape_dataset'
         if is_train:
             df = pd.read_csv('Dataset/dataset_shape_synth_train.csv')
         else:  
             df = pd.read_csv('Dataset/dataset_shape_synth_test.csv')
-    elif dataset == 3:
-        # MNIST dataset
-        if is_train:
-            dataset_path = 'Dataset/MNIST'
-            dataset = MNIST(dataset_path, train=True, transform=transforms.ToTensor(), download=True)
-        else:
-            dataset_path = 'Dataset/MNIST'
-            dataset = MNIST(dataset_path, train=False, transform=transforms.ToTensor(), download=True)
-        dataloader = DataLoader(dataset, batch_size=1, shuffle=is_train)
-        return dataloader
+
+    # elif dataset == 5:
+    #     # MNIST dataset
+    #     if is_train:
+    #         dataset_path = 'Dataset/MNIST'
+    #         dataset = MNIST(dataset_path, train=True, transform=transforms.ToTensor(), download=True)
+    #     else:
+    #         dataset_path = 'Dataset/MNIST'
+    #         dataset = MNIST(dataset_path, train=False, transform=transforms.ToTensor(), download=True)
+    #     dataloader = DataLoader(dataset, batch_size=1, shuffle=is_train)
+    #     return dataloader
     else:
-        raise ValueError('Input dataset parameter 0-3')
+        raise ValueError('Input dataset parameter 0-4')
 
     dataset = MyDataset(dataset_path, df, is_train, sup)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=is_train)
