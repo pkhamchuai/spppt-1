@@ -65,6 +65,12 @@ def train(model_name, model_params, timestamp):
     elif model_name == 'SP_AffineNet3':
         from utils.SPaffineNet3 import SP_AffineNet3
         model = SP_AffineNet3(model_params).to(device)
+    elif model_name == 'SP_AffineNet4':
+        from utils.SPaffineNet4 import SP_AffineNet4
+        model = SP_AffineNet4(model_params).to(device)
+    else:
+        print('Input a valid model name')
+        sys.exit()
 
     parameters = model.parameters()
     optimizer = optim.Adam(parameters, model_params.learning_rate)
