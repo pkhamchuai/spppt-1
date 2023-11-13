@@ -1,0 +1,22 @@
+SP_AffineNet4
+trained_models/SP_AffineNet4_00100_0.0001_0_2_1_20231113-161803.pth
+00100_0.0001_0_2_1
+
+Model name:  dataset0_sup0_image1_heatmaps0_loss_image0
+Model code:  00100_0.0001_0_2_1
+Dataset used:  Actual eye
+Supervised or unsupervised model:  Unsupervised
+Image type:  Image used
+Heatmaps used:  Heatmaps not used
+Loss function case:  0
+Loss function for image:  MSELoss()
+Loss function for affine:  <utils.utils1.loss_affine object at 0x7fb0df366730>
+Learning rate:  0.0001
+Decay rate:  0.96
+Start epoch:  0
+Number of epochs:  2
+Batch size:  1
+
+
+[1, 0.05211447064578533, 0.046743512712419034]
+[2, 0.048162107000127435, 0.046743512712419034]

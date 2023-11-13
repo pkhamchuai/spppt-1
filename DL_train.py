@@ -274,6 +274,10 @@ def train(model_name, model_params, timestamp):
     torch.save(model.state_dict(), model_name_to_save)
     print(f'Model saved in: {model_name_to_save}')
 
+    # save the output of print_explanation() and loss_list to a txt file
+    print_summary(model_name, model_name_to_save, 
+                  model_params, epoch_loss_list, timestamp, False)
+
     # Return epoch_loss_list
     return model, epoch_loss_list
 
@@ -368,6 +372,9 @@ def test(model_name, model, model_params, timestamp):
     #     if file.endswith(".txt"):
     #         os.remove(os.path.join(output_dir, file))
 
+    print_summary(model_name, None, model_params, 
+                  None, timestamp, True)
+
 
 if __name__ == '__main__':
     # get the arguments
@@ -398,12 +405,8 @@ if __name__ == '__main__':
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     model, loss_list = train(args.model, model_params, timestamp)
 
-    # save the output of print_explanation() and loss_list to a txt file
-    print_summary(args.model, model_params, loss_list, timestamp, False)
-
     print("\nTesting the trained model +++++++++++++++++++++++")
 
     test(args.model, model, model_params, timestamp)
-    print_summary(args.model, model_params, None, timestamp, True)
     
     print("Test model finished +++++++++++++++++++++++++++++")

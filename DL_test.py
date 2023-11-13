@@ -44,9 +44,11 @@ image_size = 256
 def test(model_name, model_params, timestamp):
     
     if model_name == 'SP_AffineNet1':
+        torch.manual_seed(9793047918980052389)
         from utils.SPaffineNet1 import SP_AffineNet1
         model = SP_AffineNet1(model_params).to(device)
     elif model_name == 'SP_AffineNet1_alt':
+        torch.manual_seed(9793047918980052389)
         from utils.SPaffineNet1_alt import SP_AffineNet1_alt
         model = SP_AffineNet1_alt(model_params).to(device)
     elif model_name == 'SP_AffineNet2':
@@ -58,11 +60,11 @@ def test(model_name, model_params, timestamp):
     elif model_name == 'SP_AffineNet3':
         from utils.SPaffineNet3 import SP_AffineNet3
         model = SP_AffineNet3(model_params).to(device)
-    elif model_name == 'DHR':
-        from utils.SP_DHR_Net import SP_DHR_Net
-        model = SP_DHR_Net(model_params).to(device)
+    elif model_name == 'SP_AffineNet4':
+        from utils.SPaffineNet4 import SP_AffineNet4
+        model = SP_AffineNet4(model_params).to(device)
     else:
-        print(f"Model {model_name} not found")
+        print('Input a valid model name')
         sys.exit()
 
     parameters = model.parameters()
@@ -184,6 +186,9 @@ def test(model_name, model_params, timestamp):
     # for file in os.listdir(output_dir):
     #     if file.endswith(".txt"):
     #         os.remove(os.path.join(output_dir, file))
+
+    print_summary(model_name, None, model_params, 
+                  None, timestamp, True)
 
 
 if __name__ == '__main__':
