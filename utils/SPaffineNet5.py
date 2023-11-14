@@ -11,9 +11,9 @@ from pytorch_model_summary import summary
 image_size = 256
 
 # define model
-class SP_AffineNet(nn.Module):
+class SP_AffineNet5(nn.Module):
     def __init__(self, model_params):
-        super(SP_AffineNet, self).__init__()
+        super(SP_AffineNet5, self).__init__()
         self.superpoint = SuperPointFrontend('utils/superpoint_v1.pth', nms_dist=4,
                           conf_thresh=0.015, nn_thresh=0.7, cuda=True)
         self.affineNet = AffineNet()

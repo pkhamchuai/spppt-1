@@ -11,12 +11,12 @@ from pytorch_model_summary import summary
 image_size = 256
 
 # define model
-class SP_AffineNet1_alt(nn.Module):
+class SP_AffineNet2alt(nn.Module):
     def __init__(self, model_params):
-        super(SP_AffineNet1_alt, self).__init__()
+        super(SP_AffineNet2alt, self).__init__()
         self.superpoint = SuperPointFrontend('utils/superpoint_v1.pth', nms_dist=4,
                           conf_thresh=0.015, nn_thresh=0.7, cuda=True)
-        self.affineNet = AffineNet1_alt()
+        self.affineNet = AffineNet2_alt()
         self.nn_thresh = 0.7
         self.model_params = model_params
         print("\nRunning new version (not run SP on source image)")
@@ -78,9 +78,9 @@ class SP_AffineNet1_alt(nn.Module):
         return transformed_source_affine, affine_params, matches1, matches2, matches1_2, \
             desc1_2, desc2, heatmap1_2, heatmap2
 
-class AffineNet1_alt(nn.Module):
+class AffineNet2_alt(nn.Module):
     def __init__(self):
-        super(AffineNet1_alt, self).__init__()
+        super(AffineNet2_alt, self).__init__()
         self.filter = [64, 128, 256, 512]
         self.conv1  = nn.Conv2d(1,              self.filter[0], 3, padding=1, padding_mode='zeros')
         self.conv1s = nn.Conv2d(self.filter[0], self.filter[0], 2, stride=2, padding_mode='zeros')
@@ -89,7 +89,8 @@ class AffineNet1_alt(nn.Module):
         self.conv3  = nn.Conv2d(self.filter[1], self.filter[2], 3, padding=1, padding_mode='zeros')
         self.conv3s = nn.Conv2d(self.filter[2], self.filter[2], 2, stride=2, padding_mode='zeros')
 
-        self.fc1 = nn.Linear(self.filter[2]*2, 6)
+        self.fc1 = nn.Linear(self.filter[2]*2, 64)
+        self.fc3 = nn.Linear(64, 6)
 
         self.dropout = nn.Dropout(p=0.7)
         self.aPooling = nn.AdaptiveAvgPool2d((1, 1))
@@ -120,9 +121,10 @@ class AffineNet1_alt(nn.Module):
         # print(x.shape, y.shape)
         t = torch.cat((x, y), dim=1)
         # print(t.shape)
-        t = self.fc1(t.flatten())
-        t = t.view(-1, 2, 3)
+        t = self.ReLU(self.dropout(self.fc1(t.flatten())))
         # print(t.shape)
+        t = self.fc3(self.ReLU(t))
+        t = t.view(-1, 2, 3)
 
         return t
 
