@@ -1,0 +1,2 @@
+41 Dataset/Dataset-processed/03-03-2560/1387253-1R/b/1387253_20170303_before_b3-1.jpg Dataset/Dataset-processed/03-03-2560/1387253-1R/b/1387253_20170303_after_b1.jpg
+66 Dataset/Dataset-processed/23-12-2559/3691745/b1/3691745_20161223__R_b2-1.jpg Dataset/Dataset-processed/23-12-2559/3691745/b1/3691745_20161223__R_b3.jpg

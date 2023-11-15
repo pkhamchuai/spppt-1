@@ -31,14 +31,14 @@ def model_loader(model_name, model_params):
             model = SP_AffineNet1(model_params).to(device)
         elif model_name == 'SP_AffineNet1alt':
             torch.manual_seed(9793047918980052389)
-            from utils.SPaffineNet1_alt import SP_AffineNet1_alt
-            model = SP_AffineNet1_alt(model_params).to(device)
+            from utils.SPaffineNet1alt import SP_AffineNet1alt
+            model = SP_AffineNet1alt(model_params).to(device)
         elif model_name == 'SP_AffineNet2':
             from utils.SPaffineNet2 import SP_AffineNet2
             model = SP_AffineNet2(model_params).to(device)
         elif model_name == 'SP_AffineNet2alt':
-            from utils.SPaffineNet2_alt import SP_AffineNet2_alt
-            model = SP_AffineNet2_alt(model_params).to(device)
+            from utils.SPaffineNet2alt import SP_AffineNet2alt
+            model = SP_AffineNet2alt(model_params).to(device)
         elif model_name == 'SP_AffineNet3':
             from utils.SPaffineNet3 import SP_AffineNet3
             model = SP_AffineNet3(model_params).to(device)

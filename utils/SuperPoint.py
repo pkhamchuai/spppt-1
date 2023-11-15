@@ -506,4 +506,14 @@ class PointTracker(object):
     self.i = self.i + 1
     input_image = input_image.astype('float32')
     return (input_image, True)
-  
+
+# load images
+def load_image(img_path, img_size=(256, 256)):
+    grayim = cv2.imread(img_path, 0)
+    interp = cv2.INTER_AREA
+    grayim = cv2.resize(grayim, (img_size[1], img_size[0]), interpolation=interp)
+
+    # normalize image to range 0 to 1
+    image = (grayim/np.max(grayim)).astype('float32')
+
+    return image
