@@ -106,16 +106,16 @@ def run(model_params):
         # create affine transform matrix from points1 to points2
         # and apply it to points1
         affine_transform1 = cv2.estimateAffinePartial2D(matches1_RANSAC.T, matches2_RANSAC.T)
-        matches1_transformed = cv2.transform(matches1_RANSAC.T[None, :, :], affine_transform1[0])
+        matches1_transformed = cv2.transform(matches1.T[None, :, :], affine_transform1[0])
         matches1_transformed = matches1_transformed[0].T
 
         # transform image 1 and 2 using the affine transform matrix
         transformed_source_affine = cv2.warpAffine(source_image, affine_transform1[0], (256, 256))
 
-        mse12 = np.mean((matches1_transformed - matches2_RANSAC)**2)
-        tre12 = np.mean(np.sqrt(np.sum((matches1_transformed - matches2_RANSAC)**2, axis=0)))
+        # mse12 = np.mean((matches1_transformed - matches2_RANSAC)**2)
+        # tre12 = np.mean(np.sqrt(np.sum((matches1_transformed - matches2_RANSAC)**2, axis=0)))
 
-        if i < 100:
+        if i < 10:
             plot_ = True
         else:
             plot_ = False
@@ -123,7 +123,7 @@ def run(model_params):
         results = DL_affine_plot(f"{i+1}", output_dir,
                 f"{i}", "_", source_image, target_image, \
                 transformed_source_affine, \
-                matches1_RANSAC, matches2_RANSAC, matches1_transformed, desc1, desc2, 
+                matches1, matches2, matches1_transformed, desc1, desc2, 
                 affine_params_true=affine_params_true,
                 affine_params_predict=affine_transform1, 
                 heatmap1=heatmap1, heatmap2=heatmap2, plot=plot_)

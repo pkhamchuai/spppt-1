@@ -105,8 +105,8 @@ def run(model_params):
         # transform image 1 and 2 using the affine transform matrix
         transformed_source_affine = cv2.warpAffine(source_image, affine_transform1[0], (256, 256))
 
-        mse12 = np.mean((matches1_transformed - matches2)**2)
-        tre12 = np.mean(np.sqrt(np.sum((matches1_transformed - matches2)**2, axis=0)))
+        # mse12 = np.mean((matches1_transformed - matches2)**2)
+        # tre12 = np.mean(np.sqrt(np.sum((matches1_transformed - matches2)**2, axis=0)))
 
         if i < 100:
             plot_ = True
