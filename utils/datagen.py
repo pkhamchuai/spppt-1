@@ -54,7 +54,6 @@ class MyDataset(torch.utils.data.Dataset):
         else:
             return source_img, target_img
         
-        
 
 def datagen(dataset, is_train, sup):
     if dataset == 0:

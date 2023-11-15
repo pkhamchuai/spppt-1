@@ -1,192 +1,75 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import math
-
 import torch
-from torch import nn
-from torch.nn import functional as F
-from torchsummary import summary
+import torch.nn as nn
+# import torch.nn.functional as F
+import numpy as np
+from utils.SuperPoint import SuperPointFrontend
+from utils.utils0 import *
+from utils.utils1 import *
+from utils.utils1 import transform_points_DVF
+from pytorch_model_summary import summary
 
+image_size = 256
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class Affine_Network(nn.Module):
-    # Important - assumes the temporary mini batch size equal to 1! The real batch size must be handled by the calling function.
-    def __init__(self, device):
-        super(Affine_Network, self).__init__()
-        self.device = device
+from networks import affine_network_simple as an
+from utils.SuperPoint import SuperPointFrontend
+from utils.utils1 import transform_points_DVF
 
-        self.feature_extractor = Feature_Extractor(self.device)
-        self.feature_combiner = nn.Sequential(
-            nn.Conv2d(512, 256, 3, stride=2, padding=1),
-            nn.GroupNorm(256, 256),
-            nn.PReLU(),
-            nn.Conv2d(256, 256, 3, stride=2, padding=1),
-            nn.GroupNorm(256, 256),
-            nn.PReLU(),
-            nn.AdaptiveAvgPool2d((1, 1)),
-        )
-        self.attention_network = Attention_Network()
-        self.regression_network = Regression_Network()
+class SP_DHR_siamese(nn.Module):
+    def __init__(self, model_params):
+        super(SP_DHR_siamese, self).__init__()
+        self.superpoint = SuperPointFrontend('utils/superpoint_v1.pth', nms_dist=4,
+                          conf_thresh=0.015, nn_thresh=0.7, cuda=True)
+        self.affineNet = an.load_network(device)
+        self.nn_thresh = 0.7
+        self.model_params = model_params
+        print("\nRunning new version (not run SP on source image)")
 
-        self.patch_size = (224, 224)
-        self.unfold = nn.Unfold(self.patch_size, stride=self.patch_size)
+        # inputs = torch.rand((1, 1, image_size, image_size)), torch.rand((1, 1, image_size, image_size))
+        # summary(self.affineNet, *inputs, show_input=True, show_hierarchical=True, print_summary=True)
 
-    def forward(self, source, target):
-        us, ut = self.pad_and_unfold(source, target)
-        grid_size = (math.ceil(source.size(2) / self.patch_size[0]), math.ceil(source.size(3) / self.patch_size[1]))
-        us = self.feature_extractor(us)
-        ut = self.feature_extractor(ut)
-        x = torch.cat((us, ut), dim=1)   # << concat
-        x = self.feature_combiner(x)
-        x = x.view(grid_size[0], grid_size[1], x.size(1))
-        x = x.permute(2, 0, 1)
-        x = x.view(1, 1, x.size(0), x.size(1), x.size(2))
-        x = self.attention_network(x)
-        x = self.regression_network(x)
-        return x
+    def forward(self, source_image, target_image):
+        points1, desc1, heatmap1 = self.superpoint(source_image[0, 0, :, :].cpu().numpy())
+        points2, desc2, heatmap2 = self.superpoint(target_image[0, 0, :, :].cpu().numpy())
 
-    def pad_and_unfold(self, source, target):
-        pad_x = math.ceil(source.size(3) / self.patch_size[1])*self.patch_size[1] - source.size(3)
-        pad_y = math.ceil(source.size(2) / self.patch_size[0])*self.patch_size[0] - source.size(2)
-        b_x, e_x = math.floor(pad_x / 2), math.ceil(pad_x / 2)
-        b_y, e_y = math.floor(pad_y / 2), math.ceil(pad_y / 2)
-        source = F.pad(source, (b_x, e_x, b_y, e_y))
-        target = F.pad(target, (b_x, e_x, b_y, e_y))
-        us = self.unfold(source)
-        ut = self.unfold(target)
-        us = us.view(us.size(0), 1, self.patch_size[0], self.patch_size[1], us.size(2))
-        ut = ut.view(ut.size(0), 1, self.patch_size[0], self.patch_size[1], ut.size(2))
-        us = us[0].permute(3, 0, 1, 2)
-        ut = ut[0].permute(3, 0, 1, 2)
-        return us, ut
+        if self.model_params.heatmaps == 0:
+            affine_params = self.affineNet(source_image, target_image)
+        elif self.model_params.heatmaps == 1:
+            print("This part is not yet implemented.")
+            # affine_params = self.affineNet(source_image, target_image, heatmap1, heatmap2)
 
-    def show_patchs(self, image, grid_size):
-        t_image = image.detach().cpu()
-        plt.figure()
-        for i in range(grid_size[0]*grid_size[1]):
-            plt.subplot(grid_size[0], grid_size[1], i+1)
-            plt.imshow(t_image[i, 0, :, :,], cmap='gray')
-            plt.axis('off')
+        # transform the source image using the affine parameters
+        # using F.affine_grid and F.grid_sample
+        transformed_source_affine = tensor_affine_transform(source_image, affine_params)
+        points1_2, desc1_2, heatmap1_2 = self.superpoint(transformed_source_affine[0, 0, :, :].detach().cpu().numpy())
 
-class Attention_Network(nn.Module):
-    def __init__(self):
-        super(Attention_Network, self).__init__()
+        # match the points between the two images
+        tracker = PointTracker(5, nn_thresh=0.7)
+        try:
+            matches = tracker.nn_match_two_way(desc1, desc2, nn_thresh=self.nn_thresh)
+        except:
+            # print('No matches found')
+            # TODO: find a better way to do this
+            try:
+                while matches.shape[1] < 3 and self.nn_thresh > 0.1:
+                    self.nn_thresh = self.nn_thresh - 0.1
+                    matches = tracker.nn_match_two_way(desc1, desc2, nn_thresh=self.nn_thresh)
+            except:
+                return transformed_source_affine, affine_params, [], [], [], [], [], [], []
 
-        self.attention_module = nn.Sequential(
-            nn.Conv3d(1, 256, kernel_size=(256, 3, 3), padding=(0, 1, 1)),
-            nn.GroupNorm(256, 256),
-            nn.PReLU(),
-        )
+        # take the elements from points1 and points2 using the matches as indices
+        matches1 = np.array(points1[:2, matches[0, :].astype(int)])
+        matches2 = np.array(points2[:2, matches[1, :].astype(int)])
 
-        self.compose_module = nn.Sequential(
-            nn.Conv2d(256, 256, 3, stride=1, padding=1),
-            nn.GroupNorm(256, 256),
-            nn.PReLU(),
-            nn.AdaptiveAvgPool2d((1, 1))
-        )
+        # try:
+        #     matches1_2 = points1_2[:2, matches[0, :].astype(int)]
+        # except:
+        # print(affine_params.cpu().detach().shape, transformed_source_affine.shape)
+        matches1_2 = transform_points_DVF(torch.tensor(matches1), 
+                        affine_params.cpu().detach(), transformed_source_affine)
 
-    def forward(self, x):
-        x = self.attention_module(x)
-        x = x[:, :, 0, :, :]
-        x = self.compose_module(x)
-        x = x.view(1, -1)
-        return x
-
-class Regression_Network(nn.Module):
-    def __init__(self):
-        super(Regression_Network, self).__init__()
-
-        self.fc = nn.Sequential(
-            nn.Linear(256, 256),
-            nn.PReLU(),
-            nn.Linear(256, 6),
-        )
-
-    def forward(self, x):
-        x = self.fc(x)
-        return x.view(-1, 2, 3)
-
-class Forward_Layer(nn.Module):
-    def __init__(self, channels, pool=False):
-        super(Forward_Layer, self).__init__()
-        self.pool = pool
-        if self.pool:
-            self.pool_layer = nn.Sequential(
-                nn.Conv2d(channels, 2*channels, 3, stride=2, padding=3)
-            )
-            self.layer = nn.Sequential(
-                nn.Conv2d(channels, 2*channels, 3, stride=2, padding=3),
-                nn.GroupNorm(2*channels, 2*channels),
-                nn.PReLU(),
-                nn.Conv2d(2*channels, 2*channels, 3, stride=1, padding=1),
-                nn.GroupNorm(2*channels, 2*channels),
-                nn.PReLU(),
-            )
-        else:
-            self.layer = nn.Sequential(
-                nn.Conv2d(channels, channels, 3, stride=1, padding=1),
-                nn.GroupNorm(channels, channels),
-                nn.PReLU(),
-                nn.Conv2d(channels, channels, 3, stride=1, padding=1),
-                nn.GroupNorm(channels, channels),
-                nn.PReLU(),
-            )
-
-    def forward(self, x):
-        if self.pool:
-            return self.pool_layer(x) + self.layer(x)
-        else:
-            return x + self.layer(x)
-
-class Feature_Extractor(nn.Module):
-    def __init__(self, device):
-        super(Feature_Extractor, self).__init__()
-        self.device = device
-        self.input_layer = nn.Sequential(
-            nn.Conv2d(1, 32, 7, stride=2, padding=3),
-        )
-        self.layer_1 = Forward_Layer(32, pool=True)
-        self.layer_2 = Forward_Layer(64, pool=True)
-        self.layer_3 = Forward_Layer(128, pool=True)
-        self.layer_4 = Forward_Layer(256)
-
-    def forward(self, x):
-        x = self.input_layer(x)
-        x = self.layer_1(x)
-        x = self.layer_2(x)
-        x = self.layer_3(x)
-        x = self.layer_4(x)
-        return x
-
-def load_network(device, path=None):
-    model = Affine_Network(device)
-    model = model.to(device)
-    if path is not None:
-        model.load_state_dict(torch.load(path))
-        model.eval()
-    return model
-
-def test_forward_pass():
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = load_network(device)
-    y_size = 760
-    x_size = 512
-    no_channels = 1
-    summary(model, [(no_channels, y_size, x_size), (no_channels, y_size, x_size)])
-
-    batch_size = 1
-    example_source = torch.rand((batch_size, no_channels, y_size, x_size)).to(device)
-    example_target = torch.rand((batch_size, no_channels, y_size, x_size)).to(device)
-
-    example_source[:, :, 200:500, 50:450] = 1
-    example_target[:, :, 100:600, 200:400] = 1
-
-    result = model(example_source, example_target)
-    print(result.size())
-
-
-def run():
-    test_forward_pass()
-
-if __name__ == "__main__":
-    run()
-
+        # transform the points using the affine parameters
+        # matches1_transformed = transform_points(matches1.T[None, :, :], affine_params.cpu().detach())
+        return transformed_source_affine, affine_params, matches1, matches2, matches1_2, \
+            desc1_2, desc2, heatmap1_2, heatmap2
+    
