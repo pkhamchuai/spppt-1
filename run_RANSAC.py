@@ -115,7 +115,7 @@ def run(model_params):
         # mse12 = np.mean((matches1_transformed - matches2_RANSAC)**2)
         # tre12 = np.mean(np.sqrt(np.sum((matches1_transformed - matches2_RANSAC)**2, axis=0)))
 
-        if i < 10:
+        if i < 100:
             plot_ = True
         else:
             plot_ = False

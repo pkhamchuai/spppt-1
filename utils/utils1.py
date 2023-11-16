@@ -348,7 +348,7 @@ def test(model_name, model_, model_params, timestamp):
             heatmap1 = outputs[7]
             heatmap2 = outputs[8]
 
-            if i < 10:
+            if i < 100:
                 plot_ = True
             else:
                 plot_ = False
