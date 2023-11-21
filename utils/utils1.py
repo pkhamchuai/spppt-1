@@ -49,8 +49,8 @@ def model_loader(model_name, model_params):
             print('Loading DHR model (networks/affine_network_simple.py)')
             from utils.SP_DHR import SP_DHR_Net
             model = SP_DHR_Net(model_params).to(device)
-
         return model
+    
     else:
         print('Input a valid model name')
         sys.exit()

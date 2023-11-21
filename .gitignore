@@ -3,4 +3,5 @@
 test.ipynb
 *:Zone.Identifier
 output/*/*.png
-trained_models/*.pth
+trained_models/DHR*.pth
+*.pyc
